@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3A4C9A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="腰評価">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body><title>腰部 初回評価ナビ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: 片手操作の縦一列。上部に経過時間とステップ、下部に固定ナビ。タップ領域は最低44px。肩版と同じ構成で、アクセントは藍 */
+:root{
+  --bg:#EEF0F4; --surface:#FFFFFF; --surface-2:#E3E6EE; --line:#CBD0DC;
+  --ink:#161C2C; --ink-2:#4B5367;
+  --accent:#3A4C9A; --accent-ink:#FFFFFF; --accent-soft:#DDE2F5;
+  --pos:#B4361F; --on-pos:#FFFFFF; --neg:#2F6B45; --on-neg:#FFFFFF;
+  --warn:#946000; --warn-soft:#FBEBC8;
+  --f-body:"IBM Plex Sans JP","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10131B; --surface:#181D29; --surface-2:#222939; --line:#323A4E;
+  --ink:#E4E7F0; --ink-2:#9AA2B8;
+  --accent:#93A5F2; --accent-ink:#0D1430; --accent-soft:#1E2747;
+  --pos:#F08A72; --on-pos:#2A0D07; --neg:#7CC795; --on-neg:#0B2214;
+  --warn:#E3B04B; --warn-soft:#3A2C0E; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#10131B; --surface:#181D29; --surface-2:#222939; --line:#323A4E;
+  --ink:#E4E7F0; --ink-2:#9AA2B8;
+  --accent:#93A5F2; --accent-ink:#0D1430; --accent-soft:#1E2747;
+  --pos:#F08A72; --on-pos:#2A0D07; --neg:#7CC795; --on-neg:#0B2214;
+  --warn:#E3B04B; --warn-soft:#3A2C0E; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:16px;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:disabled{opacity:.4;cursor:default}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);margin-inline:-16px;padding:10px 16px 0;border-bottom:1px solid var(--line)}
+.top-in{max-width:560px;margin:0 auto}
+.top-row{display:flex;align-items:center;gap:10px}
+.app{flex:1;min-width:0;font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app small{font-weight:500;color:var(--ink-2);margin-left:6px}
+.p1left{font-size:12px;color:var(--ink-2);text-align:right;line-height:1.2}
+.p1left b{font-family:var(--f-num);font-size:15px;color:var(--ink)}
+.timer{font-family:var(--f-num);font-size:22px;letter-spacing:.02em;min-width:4.2em;text-align:right}
+.timer.t10{color:var(--warn)} .timer.t15{color:var(--pos)}
+.steps{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-top:8px}
+.steps button{border:0;background:none;padding:6px 0 8px;font-size:11px;color:var(--ink-2);border-top:3px solid var(--line);position:relative;min-height:36px}
+.steps button.done{border-top-color:var(--accent)}
+.steps button.cur{border-top-color:var(--ink);color:var(--ink);font-weight:700}
+.steps button.miss::after{content:"";position:absolute;top:4px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+
+/* main */
+main{max-width:560px;margin:0 auto;padding-block:16px 150px;display:flex;flex-direction:column;gap:12px}
+h1{font-size:22px;line-height:1.3;margin:2px 0 0;text-wrap:balance}
+.lead{color:var(--ink-2);margin:0;font-size:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.field{display:flex;flex-direction:column;gap:8px}
+.f-label{font-size:13px;font-weight:700;color:var(--ink-2);letter-spacing:.03em;display:flex;align-items:center;gap:6px}
+.f-label .miss{width:7px;height:7px;border-radius:50%;background:var(--warn);flex:none}
+.sub{font-size:12.5px;color:var(--ink-2);margin:0}
+.sec-title{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--ink-2);margin:6px 2px -4px}
+.mv{display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--line)}
+.mv:first-child{border-top:0;padding-top:0}
+.mv-name{font-weight:700;font-size:15px}
+
+/* segmented & chips */
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.seg button[aria-pressed="true"][data-tone="pos"]{background:var(--pos);border-color:var(--pos);color:var(--on-pos)}
+.seg button[aria-pressed="true"][data-tone="neg"]{background:var(--neg);border-color:var(--neg);color:var(--on-neg)}
+.seg.compact button{min-height:40px;font-size:14px;padding:6px 8px}
+.chips button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);border-color:var(--accent);font-weight:500}
+.chips button[aria-pressed="true"]::before{content:"✓ ";color:var(--accent);font-weight:700}
+
+/* switch */
+.sw{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;background:none;border:0;padding:0;text-align:left}
+.sw-track{width:52px;height:30px;border-radius:15px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.sw-knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .15s}
+.sw[aria-checked="true"] .sw-track{background:var(--accent)}
+.sw[aria-checked="true"] .sw-knob{transform:translateX(22px)}
+
+/* slider & stepper */
+.sl{display:flex;flex-direction:column;gap:4px}
+.sl-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px}
+.sl-head output{font-family:var(--f-num);font-size:20px;font-variant-numeric:tabular-nums}
+.sl-row{display:flex;align-items:center;gap:8px}
+.sl-row input[type=range]{flex:1;min-width:0;height:44px;accent-color:var(--accent);margin:0}
+.sl-row input.unset{opacity:.35}
+.ib{width:44px;height:44px;flex:none;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:22px;line-height:1}
+.stp{display:flex;align-items:center;gap:8px}
+.stp .lab{flex:1;font-size:14px}
+.stp output{font-family:var(--f-num);font-size:22px;min-width:2.4em;text-align:center}
+.stp .unit{font-size:13px;color:var(--ink-2);min-width:2em}
+.pair{display:grid;grid-template-columns:1fr;gap:12px}
+
+input[type=text],textarea{width:100%;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-height:44px}
+textarea{min-height:84px;resize:vertical}
+
+/* buttons */
+.btn{min-height:48px;padding:0 16px;border-radius:12px;font-weight:700;border:1px solid var(--line);background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{background:var(--pos);color:var(--on-pos);border-color:var(--pos)}
+.btn.small{min-height:40px;font-size:14px;padding:0 12px}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.row .btn{flex:1 1 auto}
+.link{background:none;border:0;color:var(--accent);font-size:14px;padding:6px 0;min-height:36px;text-decoration:underline;text-underline-offset:3px}
+.big-ok{width:100%;min-height:68px;border-radius:14px;border:2px solid var(--neg);background:var(--surface);color:var(--neg);font-size:17px;font-weight:700}
+.big-ok[aria-pressed="true"]{background:var(--neg);color:var(--on-neg)}
+
+/* notices */
+.note{border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.note.warn{background:var(--warn-soft);border:1px solid var(--warn)}
+.note.info{background:var(--accent-soft);border:1px solid var(--accent)}
+.note b{font-weight:700}
+
+/* modules */
+.mod{gap:10px}
+.mod.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mod-key{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-family:var(--f-num);font-size:16px;background:var(--surface-2);flex:none}
+.mod.on .mod-key{background:var(--accent);color:var(--accent-ink)}
+.mod-title{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
+.mod-title b{display:block;font-size:16px}
+.mod-title small{display:block;color:var(--ink-2);font-size:12.5px}
+.why{font-size:13px;color:var(--accent);font-weight:500}
+.why::before{content:"推奨  ";font-weight:700}
+
+/* tests */
+.lv-head{display:flex;align-items:center;gap:8px}
+.lv{font-family:var(--f-num);font-size:13px;padding:2px 8px;border-radius:6px;background:var(--ink);color:var(--bg)}
+.lv-head .cnt{margin-left:auto;font-size:14px;color:var(--ink-2)}
+.test{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+.t-head{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.t-name{font-weight:700;font-size:16px;margin-right:2px}
+.tag{font-size:11px;padding:1px 7px;border-radius:6px;background:var(--surface-2);color:var(--ink-2);font-family:var(--f-num)}
+.tag.warn{background:var(--warn-soft);color:var(--warn);font-family:var(--f-body);font-weight:700}
+.t-time{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.t-tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.status{display:flex;align-items:center;gap:10px;font-size:14px;padding:10px 12px;border-radius:10px;background:var(--surface-2);color:var(--ink-2)}
+.status b{color:var(--ink)}
+details.hint summary{font-size:13px;color:var(--accent);cursor:pointer;padding:4px 0;list-style:none}
+details.hint summary::before{content:"▸ ";}
+details.hint[open] summary::before{content:"▾ ";}
+details.hint p{margin:4px 0 0;font-size:13.5px;color:var(--ink-2)}
+.cl{display:flex;flex-direction:column;gap:6px}
+.cl + .cl{padding-top:10px;border-top:1px solid var(--line)}
+.cl-row{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.cl-items{display:flex;flex-wrap:wrap;gap:6px}
+.cl-items span{font-size:12.5px;padding:3px 8px;border-radius:999px;border:1px solid var(--line)}
+.cl-items .p{background:var(--pos);color:var(--on-pos);border-color:var(--pos)}
+.cl-items .n{background:var(--surface-2)}
+.cl-items .u{border-style:dashed;color:var(--ink-2)}
+
+/* summary */
+.soap{font-family:var(--f-body);font-size:13.5px;line-height:1.6;background:var(--surface-2);border:0;border-radius:10px;padding:12px;min-height:200px}
+.check-row{display:flex;align-items:flex-start;gap:10px;padding-top:10px;border-top:1px solid var(--line);font-size:14px}
+.check-row:first-of-type{border-top:0;padding-top:0}
+.check-row div{flex:1;min-width:0}
+.check-row b{display:block}
+.flash{font-size:14px;font-weight:700;color:var(--neg)}
+
+/* bottom nav */
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.nav-in{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.nav-in .primary{flex:1}
+.nav-mid{font-size:12px;color:var(--ink-2);text-align:center;line-height:1.3;min-width:3.5em}
+.nav-mid .w{color:var(--warn);font-weight:700}
+
+@media (min-width:480px){.pair{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top"><div class="top-in" id="top"></div></header>
+<main id="main"></main>
+<nav class="bottom" aria-label="ステップ移動"><div class="nav-in" id="bottom"></div></nav>
+
+<script>
+"use strict";
+const KEY = "lumbar-eval-draft-v1";
+
+const STEPS = [
+  {id:"info",  label:"基本", title:"基本情報"},
+  {id:"rf",    label:"確認", title:"レッドフラグの確認"},
+  {id:"hx",    label:"問診", title:"問診"},
+  {id:"mods",  label:"選択", title:"評価モジュールの選択"},
+  {id:"core",  label:"共通", title:"共通評価"},
+  {id:"tests", label:"検査", title:"モジュール別の検査"},
+  {id:"smod",  label:"修正", title:"症状修正・機能評価"},
+  {id:"sum",   label:"記録", title:"記録のまとめ"}
+];
+
+/* 評価モジュール。p=優先度(1-3), irr=易刺激性が高いと控える検査, t=目安秒数, o=選択肢, pos=陽性とみなす値, num=[min,max] */
+const RESP = ["改善・中央化","不変","増悪・末梢化"];
+const MODS = {
+  A:{name:"神経根症状", sub:"椎間板ヘルニアなど", tests:[
+    {id:"slump", n:"Slump test", p:1, irr:1, t:40, h:"座位で胸腰椎屈曲→頸部屈曲→膝伸展→足関節背屈。症状再現し、頸部伸展で軽減すれば陽性。"},
+    {id:"mL4", n:"筋力 L4（足関節背屈）", p:1, t:15, o:["正常","低下"], pos:"低下"},
+    {id:"mL5", n:"筋力 L5（母趾伸展）", p:1, t:15, o:["正常","低下"], pos:"低下"},
+    {id:"mS1", n:"筋力 S1（底屈・つま先立ち）", p:1, t:20, o:["正常","低下"], pos:"低下"},
+    {id:"sens", n:"感覚（L4–S1 皮膚分節）", p:1, t:30, o:["正常","低下"], pos:"低下"},
+    {id:"ptr", n:"膝蓋腱反射（PTR）", p:2, t:15, o:["正常","低下","亢進"]},
+    {id:"atr", n:"アキレス腱反射（ATR）", p:2, t:15, o:["正常","低下","亢進"]},
+    {id:"xslr", n:"Crossed SLR", p:2, t:20, h:"健側のSLRで患側の下肢痛が出れば陽性。"},
+    {id:"fnst", n:"大腿神経伸張テスト（FNST）", p:2, irr:1, t:20, h:"腹臥位で膝を屈曲。大腿前面の痛みで陽性（L2–L4）。"},
+    {id:"babinski", n:"Babinski反射", p:3, t:10, h:"陽性なら上位運動ニューロン障害を疑い、医師へ確認。"}
+  ]},
+  B:{name:"腰部脊柱管狭窄", sub:"間欠性跛行・高齢", tests:[
+    {id:"extload", n:"伸展負荷（立位で30秒保持）", p:1, irr:1, t:40, h:"立位で腰椎伸展を30秒保持。下肢症状が出れば陽性。"},
+    {id:"dpa", n:"足背動脈の拍動", p:1, t:20, o:["触知良好","減弱・触知不良"], pos:"減弱・触知不良", h:"減弱していれば血管性跛行との鑑別が必要。医師へ確認。"},
+    {id:"walk", n:"歩行で症状が出るまでの時間", p:2, t:60, num:[0,30], unit:"分"},
+    {id:"romberg", n:"Romberg", p:2, t:20},
+    {id:"bike", n:"自転車（前屈位）での症状", p:3, t:30, o:["出ない","出る"], pos:"出る", h:"前屈位の自転車で症状が出にくければ神経性跛行の特徴。"}
+  ]},
+  C:{name:"不安定性・運動制御", sub:"若年・反復する腰痛", tests:[
+    {id:"pit", n:"Prone instability test", p:1, t:30, h:"上半身を診察台に乗せ足を床につけて棘突起を圧迫→足を浮かせ（体幹筋を収縮させ）て再度圧迫。痛みが消えれば陽性。"},
+    {id:"aberr", n:"異常運動（aberrant movement）", p:1, t:20, o:["なし","あり"], pos:"あり", h:"屈曲時の有痛弧、Gowers徴候、instability catch、腰椎骨盤リズムの逆転のいずれか。"},
+    {id:"ple", n:"Passive lumbar extension test", p:2, t:20, h:"腹臥位で両下肢を約30cm持ち上げ、腰椎を他動伸展。腰痛が出れば陽性。"},
+    {id:"waiter", n:"Waiter's bow", p:2, t:15, o:["良好","不良"], pos:"不良", h:"腰椎を中間位に保ったまま股関節から前傾できるか。"},
+    {id:"rock", n:"四つ這い前後揺動（Rocking）", p:2, t:15, o:["良好","不良"], pos:"不良"},
+    {id:"sitke", n:"座位膝伸展", p:3, t:15, o:["良好","不良"], pos:"不良", h:"膝伸展時に腰椎が後弯しないか。"},
+    {id:"pkb", n:"腹臥位膝屈曲", p:3, t:15, o:["良好","不良"], pos:"不良", h:"膝屈曲時に骨盤の回旋・前傾が起きないか。"}
+  ]},
+  D:{name:"方向特異性", sub:"反復運動による症状の変化", tests:[
+    {id:"rflex", n:"反復屈曲（立位・10回）", p:1, irr:1, t:45, o:RESP, pos:"増悪・末梢化"},
+    {id:"rext", n:"反復伸展（腹臥位または立位・10回）", p:1, irr:1, t:45, o:RESP, pos:"増悪・末梢化"},
+    {id:"shiftc", n:"側方シフトの修正", p:2, t:30, o:RESP, pos:"増悪・末梢化", h:"シフトがある場合に、骨盤を徒手で中央へ戻して症状の変化をみる。"},
+    {id:"sustext", n:"伸展位の保持（腹臥位on elbows・2分）", p:2, t:120, o:RESP, pos:"増悪・末梢化"},
+    {id:"rglide", n:"反復側方滑走", p:3, t:45, o:RESP, pos:"増悪・末梢化"}
+  ]},
+  E:{name:"仙腸関節", sub:"殿部痛・片側", tests:[
+    {id:"sidistr", n:"Distraction", p:1, t:20, h:"背臥位で両側の上前腸骨棘を外側へ圧迫。仙腸関節部の痛みで陽性。"},
+    {id:"thrust", n:"Thigh thrust", p:1, t:20, h:"背臥位で股関節90°屈曲、大腿長軸方向に後方へ圧を加える。"},
+    {id:"sicomp", n:"Compression", p:1, t:20, h:"側臥位で上側の腸骨稜を床方向へ圧迫。"},
+    {id:"sthrust", n:"Sacral thrust", p:2, t:15, h:"腹臥位で仙骨中央を前方へ圧迫。"},
+    {id:"gaenslen", n:"Gaenslen", p:2, irr:1, t:30, h:"一側の股関節を最大屈曲、反対側を伸展させて骨盤に回旋ストレス。"},
+    {id:"fortin", n:"Fortin finger test", p:3, t:10, o:["あり","なし"], pos:"あり", h:"痛む場所を指1本で示させ、上後腸骨棘の内下方1cm以内なら「あり」。"}
+  ]},
+  F:{name:"股関節由来", sub:"鼠径部痛・股関節の可動域制限", tests:[
+    {id:"hipir", n:"股関節内旋ROM", p:1, t:20, o:["制限なし","制限あり"], pos:"制限あり"},
+    {id:"fadir", n:"FADIR", p:1, irr:1, t:20, h:"股関節屈曲・内転・内旋。鼠径部痛で陽性。"},
+    {id:"faber", n:"FABER（Patrick）", p:1, t:20, h:"股関節屈曲・外転・外旋（4の字）。鼠径部痛は股関節、殿部後方の痛みは仙腸関節を示唆。"},
+    {id:"thomas", n:"Thomas test", p:2, t:20, h:"背臥位で反対側の膝を抱え、検査側の大腿が浮けば腸腰筋の短縮。"},
+    {id:"gmed", n:"中殿筋の筋力", p:2, t:15, o:["正常","低下"], pos:"低下"},
+    {id:"trend", n:"Trendelenburg徴候", p:3, t:15}
+  ]},
+  G:{name:"伸展型", sub:"椎間関節・腰椎分離症", tests:[
+    {id:"kemp", n:"Kemp", p:1, irr:1, t:20, h:"立位で腰椎を伸展・側屈・回旋。局所痛は椎間関節、下肢への放散は神経根を示唆。"},
+    {id:"stork", n:"片脚立位での伸展（Stork）", p:1, irr:1, t:20, h:"片脚立位で腰椎を伸展。立脚側の腰部痛で陽性（若年なら分離症を疑い医師へ確認）。"},
+    {id:"facett", n:"椎間関節部の圧痛", p:1, t:15, o:["なし","あり"], pos:"あり"},
+    {id:"ely", n:"Ely test（大腿直筋）", p:2, t:15, h:"腹臥位で膝を屈曲。殿部が浮けば大腿直筋の短縮。"},
+    {id:"thoext", n:"胸椎・股関節の伸展可動性", p:3, t:30, o:["制限なし","制限あり"], pos:"制限あり"}
+  ]},
+  H:{name:"椎体骨折（骨粗鬆症）", sub:"高齢・軽微な外傷", tests:[
+    {id:"perc", n:"棘突起の叩打痛", p:1, t:15, o:["なし","あり"], pos:"あり", h:"立位で棘突起を拳で軽く叩く。あれば医師へ確認。"},
+    {id:"supine", n:"背臥位がとれるか", p:1, t:15, o:["可能","困難"], pos:"困難", h:"痛みのため背臥位がとれなければ陽性（supine sign）。"},
+    {id:"kypho", n:"円背・身長低下", p:2, t:10, o:["なし","あり"], pos:"あり"},
+    {id:"bedmob", n:"寝返り・起き上がり時の痛み", p:2, t:20, o:["なし","あり"], pos:"あり"},
+    {id:"wod", n:"壁-後頭間距離", p:3, t:20, num:[0,20], unit:"cm"}
+  ]},
+  I:{name:"術後", sub:"プロトコルに沿った確認", tests:[
+    {id:"wound", n:"創部", p:1, t:15, o:["良好","発赤・腫脹","滲出"]},
+    {id:"neurochg", n:"下肢症状（術前と比べて）", p:1, t:20, o:["改善","不変","悪化"], pos:"悪化"},
+    {id:"contraok", n:"禁忌動作の確認", p:1, t:10, o:["確認済み"]},
+    {id:"adl", n:"起居動作", p:2, t:30, o:["自立","見守り","要介助"]},
+    {id:"gait", n:"歩行", p:2, t:30, o:["独歩","杖","歩行器"]},
+    {id:"brace", n:"コルセットの装着状況", p:3, t:15, o:["良好","要指導"]}
+  ]}
+};
+const MOD_KEYS = Object.keys(MODS);
+const TEST = {};
+MOD_KEYS.forEach(k => MODS[k].tests.forEach(t => { TEST[t.id] = Object.assign({mod:k}, t); }));
+
+const MOVES = [
+  {id:"flex", n:"屈曲"}, {id:"ext", n:"伸展"}, {id:"latR", n:"右側屈"}, {id:"latL", n:"左側屈"}
+];
+const TECH = [
+  {id:"shift", n:"側方シフトの修正"},
+  {id:"ppt",   n:"骨盤後傾の誘導"},
+  {id:"apt",   n:"骨盤前傾の誘導"},
+  {id:"brace", n:"腹圧（ブレーシング）を入れて動作"},
+  {id:"hipgd", n:"股関節・胸椎から動くよう誘導"}
+];
+const SKIP_REASONS = ["易刺激性高","疼痛","時間","禁忌肢位","実施困難"];
+const NEG_WORDS = ["陰性","正常","なし","良好","異常なし","制限なし","確認済み","改善・中央化","改善","触知良好","可能","出ない","自立","独歩"];
+
+/* ---------- state ---------- */
+function blank(){
+  return {
+    v:1, step:0, startedAt:null, sample:false,
+    info:{pid:"", side:null, postop:false, op:null, opWeeks:null, contra:[]},
+    rf:{cleared:false, items:[]},
+    hx:{age:null, onset:null, dur:null, loc:[], chief:[], aggr:[], bg:[], irr:null, nrsBack:null, nrsLeg:null, sbt:null, sbtPsy:null},
+    modsInit:false, mods:{}, modSkip:{},
+    core:{insp:[], move:[], tender:[], ffd:null,
+      mv:{flex:{pain:null, lim:null}, ext:{pain:null, lim:null}, latR:{pain:null, lim:null}, latL:{pain:null, lim:null}},
+      slr:null, slrN:null, slrResp:null, hip:null, heavy:null, heavyMs:[]},
+    res:{}, level:1,
+    smod:{mode:null, skip:null, motion:null, items:{}, pre:null, post:null},
+    ap:{a:"", p:""}
+  };
+}
+function sample(){
+  const s = blank();
+  Object.assign(s.info, {pid:"SAMPLE", side:"左"});
+  s.rf.cleared = true;
+  Object.assign(s.hx, {age:"40–49", onset:"急性（動作時）", dur:"6週未満", loc:["腰部","殿部","膝より遠位"], chief:["痛み","しびれ"],
+    aggr:["前屈で増悪","座位で増悪"], bg:["デスクワーク・長時間座位"], irr:"中", nrsBack:5, nrsLeg:6, sbt:4, sbtPsy:2});
+  applySuggest(s);
+  s.core = {insp:["疼痛性側弯（シフト）"], move:["立ち上がり時痛"], tender:["椎間関節部"], ffd:35,
+    mv:{flex:{pain:"下肢へ放散", lim:"著明制限"}, ext:{pain:"局所痛", lim:"軽度制限"}, latR:{pain:"痛みなし", lim:"制限なし"}, latL:{pain:"局所痛", lim:"軽度制限"}},
+    slr:45, slrN:75, slrResp:"下肢痛の再現", hip:"再現なし", heavy:null, heavyMs:[]};
+  s.res = {slump:"陽性", mL5:"低下", mL4:"正常"};
+  s.step = 5; s.startedAt = Date.now() - 405*1000; s.sample = true;
+  return s;
+}
+function merge(base, src){
+  for (const k in src){
+    if (src[k] && typeof src[k]==="object" && !Array.isArray(src[k]) && base[k] && typeof base[k]==="object" && !Array.isArray(base[k])) merge(base[k], src[k]);
+    else base[k] = src[k];
+  }
+  return base;
+}
+function load(){ try{ const t = localStorage.getItem(KEY); return t ? merge(blank(), JSON.parse(t)) : null; }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+let S = load() || sample();
+const UI = {openSkip:null, confirmClear:false, flash:"", hints:new Set()};
+
+function gp(p){ return p.split(".").reduce((o,k)=> o==null ? undefined : o[k], S); }
+function sp(p,v){ const ks=p.split("."); let o=S; for(let i=0;i<ks.length-1;i++){ if(o[ks[i]]==null) o[ks[i]]={}; o=o[ks[i]]; } o[ks[ks.length-1]]=v; }
+function H(s){ return String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ---------- rules ---------- */
+const AGE_U40 = ["20未満","20–39"];
+const AGE_50P = ["50–64","65以上"];
+function suggest(st){
+  const h = st.hx, r = {};
+  const add = (k,why)=>{ (r[k] = r[k] || []).push(why); };
+  const has = (arr,v)=> arr.includes(v);
+  if (st.info.postop || h.onset==="術後") add("I","術後");
+  if (has(h.loc,"膝より遠位")) add("A","膝より遠位に症状");
+  if (has(h.chief,"しびれ")) add("A","主訴：しびれ");
+  if (has(h.chief,"重苦感") && (has(h.loc,"大腿まで") || has(h.loc,"膝より遠位"))) add("A","重苦感＋下肢の症状");
+  if (AGE_50P.includes(h.age) && (has(h.chief,"歩くとつらい") || has(h.aggr,"立位・歩行で増悪"))) add("B","50歳以上・立位や歩行で増悪");
+  if (has(h.aggr,"座位・前屈みで軽減")) add("B","座位・前屈みで軽減");
+  if (has(h.chief,"不安定感（抜ける）")) add("C","主訴：不安定感");
+  if (AGE_U40.includes(h.age) && h.dur==="12週以上") add("C","40歳未満・長期化");
+  if (has(h.aggr,"前屈で増悪")) add("D","前屈で増悪");
+  if (has(h.aggr,"座位で増悪")) add("D","座位で増悪");
+  if (has(h.loc,"大腿まで")) add("D","大腿までの放散（中央化を確認）");
+  if (has(h.loc,"殿部") && !has(h.loc,"腰部")) add("E","腰部より殿部に限局");
+  if (has(h.loc,"鼠径部")) add("F","鼠径部に痛み");
+  if (has(h.aggr,"後屈で増悪")) add("G","後屈で増悪");
+  if (h.age==="20未満" && has(h.bg,"スポーツ（伸展・回旋）")) add("G","20歳未満・スポーツ（分離症）");
+  if (has(h.bg,"骨粗鬆症")) add("H","骨粗鬆症");
+  if (h.age==="65以上" && (h.onset==="外傷性" || has(h.aggr,"寝返り・起き上がりで痛い"))) add("H","65歳以上・外傷または寝返り時痛");
+  if (!Object.keys(r).length) add("D","既定（該当する条件なし）");
+  return r;
+}
+function applySuggest(st){
+  const sg = suggest(st);
+  const order = ["I","H","B","A","E","F","G","C","D"];
+  let primary = null, best = -1;
+  order.forEach(k=>{ if (sg[k] && sg[k].length > best){ best = sg[k].length; primary = k; } });
+  st.mods = {}; st.modSkip = {};
+  MOD_KEYS.forEach(k=>{ st.mods[k] = {on:!!sg[k], role: k===primary ? "主" : "副"}; });
+  st.modsInit = true;
+}
+function testList(){
+  const out = [];
+  MOD_KEYS.forEach(k=>{
+    const m = S.mods[k]; if (!m || !m.on) return;
+    MODS[k].tests.forEach(t=>{
+      const lv = t.p + (m.role==="副" ? 1 : 0);
+      if (lv <= 3) out.push(Object.assign({mod:k, lv}, t));
+    });
+  });
+  return out;
+}
+const isSkip = v => typeof v==="string" && v.indexOf("skip:")===0;
+const isResult = v => v!=null && v!=="" && v!=="next" && !isSkip(v);
+function tone(t,v){ if (v===(t.pos||"陽性")) return "pos"; if (NEG_WORDS.includes(v)) return "neg"; return ""; }
+function testPos(id){ const v = S.res[id]; if (!isResult(v)) return null; return v===(TEST[id].pos||"陽性"); }
+const hxHas = (key,v)=> S.hx[key].length ? S.hx[key].includes(v) : null;
+const CLUSTERS = [
+  {mod:"E", name:"Laslett cluster（仙腸関節）", items:[
+    ["Distraction",()=>testPos("sidistr")],["Thigh thrust",()=>testPos("thrust")],["Compression",()=>testPos("sicomp")],
+    ["Sacral thrust",()=>testPos("sthrust")],["Gaenslen",()=>testPos("gaenslen")]]},
+  {mod:"C", name:"Hicks cluster（安定化運動の反応予測）", items:[
+    ["40歳未満",()=> S.hx.age ? AGE_U40.includes(S.hx.age) : null],
+    ["SLR 91°超",()=>{ const a=S.core.slr, b=S.core.slrN; if (a==null) return null; return (b==null ? a : (a+b)/2) > 91; }],
+    ["異常運動あり",()=>testPos("aberr")],["Prone instability test",()=>testPos("pit")]]},
+  {mod:"B", name:"狭窄症のcluster（Cook）", items:[
+    ["50歳以上",()=> S.hx.age ? AGE_50P.includes(S.hx.age) : null],
+    ["両側の症状",()=>hxHas("loc","両側")],
+    ["下肢痛＞腰痛",()=> S.hx.nrsLeg==null || S.hx.nrsBack==null ? null : S.hx.nrsLeg > S.hx.nrsBack],
+    ["立位・歩行で増悪",()=>hxHas("aggr","立位・歩行で増悪")],
+    ["座位・前屈みで軽減",()=>hxHas("aggr","座位・前屈みで軽減")]]}
+];
+function clusterStat(cl){
+  const vals = cl.items.map(([n,f])=>[n,f()]);
+  return {vals, pos:vals.filter(x=>x[1]===true).length, und:vals.filter(x=>x[1]==null).length, total:vals.length};
+}
+function sbtRisk(){
+  const h = S.hx;
+  if (h.sbt==null) return null;
+  if (h.sbt<=3) return "低リスク";
+  return h.sbtPsy!=null && h.sbtPsy>=4 ? "高リスク" : "中リスク";
+}
+
+function missing(id){
+  const i=S.info, h=S.hx, c=S.core, m=[];
+  const chk = (cond,label)=>{ if (cond) m.push(label); };
+  if (id==="info"){ chk(!i.side,"症状側"); if (i.postop){ chk(!i.op,"術式"); chk(i.opWeeks==null,"術後週数"); } }
+  if (id==="rf") chk(!S.rf.cleared && !S.rf.items.length,"レッドフラグの確認");
+  if (id==="hx"){ chk(!h.age,"年齢帯"); chk(!h.onset,"発症様式"); chk(!h.dur,"経過期間"); chk(!h.loc.length,"症状部位"); chk(!h.chief.length,"主訴");
+    chk(!h.aggr.length,"増悪・軽減因子"); chk(!h.irr,"易刺激性"); chk(h.nrsBack==null,"腰痛NRS"); }
+  if (id==="mods") chk(!MOD_KEYS.some(k=>S.mods[k] && S.mods[k].on),"評価モジュール");
+  if (id==="core"){
+    chk(!c.insp.length,"視診"); chk(!c.move.length,"動作観察"); chk(c.ffd==null,"FFD");
+    MOVES.forEach(mv=>{ chk(!c.mv[mv.id].pain || !c.mv[mv.id].lim, `${mv.n}`); });
+    chk(c.slr==null,"SLR（症状側）"); chk(!c.slrResp,"SLRの反応"); chk(!c.hip,"股関節スクリーン"); chk(!c.tender.length,"圧痛");
+    chk(h.chief.includes("重苦感") && !c.heavy,"重苦感の再現");
+  }
+  if (id==="tests") testList().filter(t=>t.lv===1 && S.res[t.id]==null).forEach(t=>m.push(t.n));
+  if (id==="smod") chk(!S.smod.mode,"症状修正の実施・スキップ");
+  return m;
+}
+
+/* ---------- components ---------- */
+function field(label, inner, miss){
+  return `<div class="field"><div class="f-label">${miss?'<span class="miss" title="未入力"></span>':""}${label}</div>${inner}</div>`;
+}
+function seg(path, opts, toneFn, keep, cls){
+  const cur = gp(path);
+  return `<div class="seg ${cls||""}">${opts.map(o=>{
+    const n = typeof o==="number";
+    return `<button type="button" data-act="set" data-path="${path}" data-val="${H(o)}"${n?' data-type="n"':""}${keep?' data-keep="1"':""} aria-pressed="${cur===o}"${toneFn?` data-tone="${toneFn(o)}"`:""}>${H(o)}</button>`;
+  }).join("")}</div>`;
+}
+function chips(path, opts, excl){
+  const cur = gp(path) || [];
+  return `<div class="seg chips">${opts.map(o=>`<button type="button" data-act="tog" data-path="${path}" data-val="${H(o)}"${excl?` data-excl="${H(excl)}"`:""} aria-pressed="${cur.includes(o)}">${H(o)}</button>`).join("")}</div>`;
+}
+function sw(attrs, checked, labelHtml){
+  return `<button type="button" class="sw" role="switch" aria-checked="${!!checked}" ${attrs}>${labelHtml}<span class="sw-track"><span class="sw-knob"></span></span></button>`;
+}
+function slider(path, label, min, max, step, unit, def){
+  const v = gp(path);
+  const inc = d => `data-act="inc" data-path="${path}" data-d="${d}" data-min="${min}" data-max="${max}" data-def="${def}"`;
+  return `<div class="sl">
+    <div class="sl-head"><span>${label}</span><output data-out="${path}">${v==null?"—":v+unit}</output></div>
+    <div class="sl-row">
+      <button type="button" class="ib" ${inc(-step)} aria-label="${label}を減らす">−</button>
+      <input type="range" id="r-${path}" min="${min}" max="${max}" step="${step}" value="${v==null?def:v}" data-range="${path}" data-unit="${unit}" class="${v==null?"unset":""}" aria-label="${label}">
+      <button type="button" class="ib" ${inc(step)} aria-label="${label}を増やす">＋</button>
+    </div></div>`;
+}
+function stepper(path, label, min, max, unit, def){
+  const v = gp(path);
+  const inc = d => `data-act="inc" data-path="${path}" data-d="${d}" data-min="${min}" data-max="${max}" data-def="${def}"`;
+  return `<div class="stp">${label?`<span class="lab">${label}</span>`:""}
+    <button type="button" class="ib" ${inc(-1)} aria-label="減らす">−</button>
+    <output>${v==null?"—":v}</output><span class="unit">${unit}</span>
+    <button type="button" class="ib" ${inc(1)} aria-label="増やす">＋</button></div>`;
+}
+
+/* ---------- steps ---------- */
+function rInfo(){
+  const i = S.info;
+  return `<h1>基本情報</h1>
+  <p class="lead">患者IDは任意です。入力内容はこの端末の中だけに保存され、外部には送信されません。</p>
+  <div class="card">
+    ${field("患者ID（任意）", `<input type="text" id="pid" inputmode="numeric" maxlength="12" placeholder="例：カルテ番号の下4桁" data-text="info.pid" value="${H(i.pid)}">`)}
+    ${field("症状側", seg("info.side",["右","左","両側","中央"]), !i.side)}
+    ${sw('data-act="bool" data-path="info.postop"', i.postop, "<span><b>術後の症例</b><br><span class='sub'>オンにすると術後モジュールを推奨します</span></span>")}
+    ${i.postop ? `
+      ${field("術式", seg("info.op",["開窓・椎弓切除","固定術","椎間板摘出","椎体形成（BKP）","その他"]), !i.op)}
+      ${field("術後週数", stepper("info.opWeeks","",0,52,"週",2), i.opWeeks==null)}
+      ${field("禁忌・制限", chips("info.contra",["前屈制限","回旋制限","重量物禁止","長時間座位の制限","コルセット装着中"]))}` : ""}
+  </div>
+  <div class="card">
+    ${UI.confirmClear ? clearConfirm() : `<div class="row">
+      <button type="button" class="btn" data-act="newpt">新しい患者で始める</button>
+      <button type="button" class="btn" data-act="sample">サンプル症例を表示</button></div>`}
+  </div>`;
+}
+function rRf(){
+  const open = S.rf.items.length || UI.hints.has("rf");
+  return `<h1>レッドフラグの確認</h1>
+  <p class="lead">医師の診察を経ている前提の簡易確認です。該当があっても評価は続けられ、記録に「医師へ確認」と残ります。</p>
+  <button type="button" class="big-ok" data-act="bool" data-path="rf.cleared" aria-pressed="${S.rf.cleared}">✓ 医師の診察済み・該当なし</button>
+  <div class="card">
+    <details class="hint" data-hint="rf" ${open?"open":""}><summary>気になる点がある場合</summary>
+      <div style="margin-top:10px">${chips("rf.items",["膀胱直腸障害・会陰部のしびれ","進行する下肢の筋力低下","発熱","悪性腫瘍の既往","原因不明の体重減少","安静時・夜間の持続痛","朝のこわばり（30分以上）","軽微な外傷での発症","ステロイドの長期使用"])}</div>
+    </details>
+  </div>
+  ${S.rf.items.length ? `<div class="note warn"><b>記録に「医師へ確認：${H(S.rf.items.join("・"))}」と残ります。</b>
+    ${S.rf.items.includes("膀胱直腸障害・会陰部のしびれ") ? "<div>膀胱直腸障害・会陰部のしびれは馬尾症候群の可能性があります。評価を進める前に医師へ連絡してください。</div>" : ""}</div>` : ""}`;
+}
+function rHx(){
+  const h = S.hx;
+  const risk = sbtRisk();
+  return `<h1>問診</h1>
+  <p class="lead">ここでの入力から、次のステップで使う評価モジュールを推奨します。</p>
+  <div class="card">
+    ${field("年齢帯", seg("hx.age",["20未満","20–39","40–49","50–64","65以上"]), !h.age)}
+    ${field("発症様式", seg("hx.onset",["急性（動作時）","徐々に","外傷性","術後"]), !h.onset)}
+    ${field("経過期間", seg("hx.dur",["6週未満","6–12週","12週以上"]), !h.dur)}
+  </div>
+  <div class="card">
+    ${field("症状部位（複数可）", chips("hx.loc",["腰部","殿部","鼠径部","大腿まで","膝より遠位","両側"]), !h.loc.length)}
+    ${field("主訴（複数可）", chips("hx.chief",["痛み","しびれ","重苦感","力が入らない","歩くとつらい","不安定感（抜ける）"]), !h.chief.length)}
+    ${h.chief.includes("重苦感") ? `<p class="sub">重苦感は神経由来か筋由来かを、共通評価で「腰椎の動きでの再現」と「筋の圧迫での再現」から確認します。</p>` : ""}
+    ${field("増悪・軽減因子（複数可）", chips("hx.aggr",["前屈で増悪","後屈で増悪","座位で増悪","立位・歩行で増悪","座位・前屈みで軽減","寝返り・起き上がりで痛い","特になし"],"特になし"), !h.aggr.length)}
+    ${field("背景（該当のみ）", chips("hx.bg",["スポーツ（伸展・回旋）","骨粗鬆症","デスクワーク・長時間座位","重量物を扱う仕事","腰痛を繰り返している"]))}
+  </div>
+  <div class="card">
+    ${field("易刺激性", seg("hx.irr",["低","中","高"]) + `<p class="sub">高：少しの動きで痛みが強まり、30分以上おさまらない</p>`, !h.irr)}
+    ${slider("hx.nrsBack","腰痛のNRS",0,10,1,"",5)}
+    ${slider("hx.nrsLeg","下肢痛のNRS（なければ0）",0,10,1,"",0)}
+  </div>
+  <div class="card">
+    <div class="f-label">STarT Back（任意・待合室で記入）</div>
+    ${stepper("hx.sbt","合計点",0,9,"/9",3)}
+    ${stepper("hx.sbtPsy","心理サブスコア（問5–9）",0,5,"/5",1)}
+    ${risk ? `<p class="sub">判定：<b>${risk}</b>（合計3点以下＝低、心理4点以上＝高、それ以外＝中）</p>` : ""}
+  </div>`;
+}
+function rMods(){
+  const sg = suggest(S);
+  const list = testList();
+  const on = MOD_KEYS.filter(k=>S.mods[k] && S.mods[k].on);
+  const p1sec = list.filter(t=>t.lv===1).reduce((a,t)=>a+t.t,0) + 270;
+  return `<h1>評価モジュールの選択</h1>
+  <p class="lead">問診から推奨したモジュールです。使うかどうかと、主・副の位置づけを決めてください。</p>
+  <div class="note ${on.length>2?"warn":"info"}">
+    <div><b>選択中 ${on.length}件</b>　P1の目安 <b class="num">約${Math.ceil(p1sec/60)}分</b>（共通評価4〜5分を含む）</div>
+    ${on.length>2?"<div>3件以上選ぶとP1だけで時間を超えやすくなります。副を外すか絞り込みを検討してください。</div>":""}
+    <div><button type="button" class="link" data-act="reapply">推奨をやり直す</button></div>
+  </div>
+  ${MOD_KEYS.map(k=>{
+    const m = S.mods[k] || {on:false, role:"副"};
+    const title = `<span class="mod-title"><span class="mod-key">${k}</span><span><b>${MODS[k].name}</b><small>${MODS[k].sub}</small></span></span>`;
+    return `<div class="card mod ${m.on?"on":""}">
+      ${sw(`data-act="mod" data-k="${k}"`, m.on, title)}
+      ${sg[k] ? `<div class="why">${H(sg[k].join("、"))}</div>` : ""}
+      ${m.on ? field("位置づけ", seg(`mods.${k}.role`,["主","副"],null,true) + `<p class="sub">副にすると各検査の優先度を1段下げます（P3は省きます）</p>`) : ""}
+      ${!m.on && sg[k] ? field("外す理由", seg(`modSkip.${k}`,["所見なし","時間","易刺激性高","他職種で評価済み"]), !S.modSkip[k]) : ""}
+    </div>`;
+  }).join("")}`;
+}
+function coreHints(){
+  const c = S.core, out = [];
+  const radiate = MOVES.filter(mv=>c.mv[mv.id].pain==="下肢へ放散").map(mv=>mv.n);
+  if (c.slrResp==="下肢痛の再現")
+    out.push({k:"A", t:`SLR ${c.slr==null?"":c.slr+"°"}で下肢痛が再現しました。神経根症状モジュール（A）の追加を検討してください。`});
+  if (radiate.length)
+    out.push({k:"D", t:`${radiate.join("・")}で下肢へ放散しました。方向特異性（D）で、反復運動による中央化・末梢化を確認してください。`});
+  const extPain = c.mv.ext.pain && c.mv.ext.pain!=="痛みなし";
+  if (extPain && c.mv.flex.pain==="痛みなし")
+    out.push({k:"G", t:"伸展で痛みが出て、屈曲では出ません。伸展型（G）の追加を検討してください。"});
+  if (c.mv.ext.pain==="下肢へ放散" && AGE_50P.includes(S.hx.age))
+    out.push({k:"B", t:"50歳以上で、伸展により下肢へ放散しました。腰部脊柱管狭窄（B）の追加を検討してください。"});
+  if (c.hip==="再現あり")
+    out.push({k:"F", t:"股関節の他動運動で症状が再現しました。股関節由来（F）の追加を検討してください。"});
+  if (c.heavy==="腰椎の動きで再現" || c.heavy==="両方で再現")
+    out.push({k:"D", t:"腰椎の動きで重苦感が再現しました。方向特異性（D）で、反復運動による変化を確認してください。"});
+  const seen = new Set();
+  return out.filter(h=>{ const key = h.k+h.t; if (seen.has(key)) return false; seen.add(key); return true; });
+}
+function rCore(){
+  const c = S.core;
+  const hints = coreHints();
+  const painTone = v => v==="痛みなし" ? "neg" : v==="下肢へ放散" ? "pos" : "";
+  return `<h1>共通評価</h1>
+  <p class="lead">全症例で行う評価です（目安4〜5分）。動きやSLRの結果から、追加を検討すべきモジュールを表示します。</p>
+  <div class="card">
+    ${field("視診・姿勢", chips("core.insp",["異常なし","疼痛性側弯（シフト）","前弯増強","前弯減少（平背）","円背","下肢の筋萎縮"],"異常なし"), !c.insp.length)}
+    ${field("動作観察", chips("core.move",["異常なし","起き上がり時痛","立ち上がり時痛","疼痛回避歩行","前屈み姿勢での歩行"],"異常なし"), !c.move.length)}
+  </div>
+  <div class="sec-title">腰椎の自動運動</div>
+  <div class="card">
+    ${slider("core.ffd","指床間距離（FFD）",-20,60,1,"cm",15)}
+    <p class="sub" style="margin-top:-8px">床に届かない距離。床より下まで届く場合はマイナス。</p>
+    ${MOVES.map(mv=>`<div class="mv">
+      <div class="f-label">${(!c.mv[mv.id].pain || !c.mv[mv.id].lim)?'<span class="miss"></span>':""}<span class="mv-name">${mv.n}</span></div>
+      ${seg(`core.mv.${mv.id}.pain`,["痛みなし","局所痛","下肢へ放散"],painTone,false,"compact")}
+      ${seg(`core.mv.${mv.id}.lim`,["制限なし","軽度制限","著明制限"],v=>v==="制限なし"?"neg":"",false,"compact")}
+    </div>`).join("")}
+  </div>
+  <div class="sec-title">SLR・股関節</div>
+  <div class="card">
+    <div class="pair">
+      ${slider("core.slr","SLR（症状側）",0,110,5,"°",70)}
+      ${slider("core.slrN","SLR（反対側・任意）",0,110,5,"°",80)}
+    </div>
+    ${field("SLRの反応", seg("core.slrResp",["下肢痛の再現","ハムストリングスの伸張感のみ","症状なし"], v=>v==="下肢痛の再現"?"pos":v==="症状なし"?"neg":""), !c.slrResp)}
+    ${field("股関節の他動運動（屈曲・内旋）での症状再現", seg("core.hip",["再現なし","再現あり"], v=>v==="再現あり"?"pos":"neg"), !c.hip)}
+  </div>
+  <div class="card">
+    ${field("圧痛", chips("core.tender",["なし","棘突起","椎間関節部","仙腸関節部","脊柱起立筋","殿筋","梨状筋"],"なし"), !c.tender.length)}
+  </div>
+  ${S.hx.chief.includes("重苦感") ? `<div class="card">
+    ${field("重苦感の再現", seg("core.heavy",["腰椎の動きで再現","筋の圧迫で再現","両方で再現","再現なし"]) + `<p class="sub">腰椎の自動運動と、筋の圧迫（下で部位を選択）のどちらで重苦感が再現するかを記録します。</p>`, !c.heavy)}
+    ${c.heavy==="筋の圧迫で再現" || c.heavy==="両方で再現" ? field("再現した筋（複数可）", chips("core.heavyMs",["脊柱起立筋","多裂筋","腰方形筋","大殿筋","中殿筋","梨状筋","ハムストリングス"])) : ""}
+  </div>` : ""}
+  ${hints.map(h=>{
+    const added = S.mods[h.k] && S.mods[h.k].on;
+    return `<div class="note info"><div>${h.t}</div><div>${added?`<b>${h.k}は選択済みです</b>`:`<button type="button" class="btn small primary" data-act="addmod" data-k="${h.k}">${h.k}（${MODS[h.k].name}）を副として追加</button>`}</div></div>`;
+  }).join("")}`;
+}
+function testRow(t){
+  const v = S.res[t.id];
+  const irrHigh = t.irr && S.hx.irr==="高";
+  let ctrl;
+  if (isSkip(v)) ctrl = `<div class="status"><span>スキップ：<b>${H(v.slice(5))}</b></span><button type="button" class="link" data-act="clearres" data-id="${t.id}">取り消す</button></div>`;
+  else if (v==="next") ctrl = `<div class="status"><span><b>次回の評価へ</b></span><button type="button" class="link" data-act="clearres" data-id="${t.id}">取り消す</button></div>`;
+  else if (t.num) ctrl = stepper(`res.${t.id}`,"",t.num[0],t.num[1],t.unit||"",0);
+  else ctrl = seg(`res.${t.id}`, t.o||["陽性","陰性"], o=>tone(t,o));
+  const tools = (!isSkip(v) && v!=="next") ? `<div class="t-tools">
+      <button type="button" class="link" data-act="skipopen" data-id="${t.id}">スキップ…</button>
+      ${t.h ? `<details class="hint" data-hint="${t.id}" ${UI.hints.has(t.id)?"open":""}><summary>手技</summary><p>${H(t.h)}</p></details>` : ""}
+    </div>
+    ${UI.openSkip===t.id ? `<div class="seg chips">${SKIP_REASONS.map(r=>`<button type="button" data-act="skipset" data-id="${t.id}" data-val="${r}" aria-pressed="false">${r}</button>`).join("")}</div>` : ""}` : "";
+  return `<div class="test">
+    <div class="t-head"><span class="t-name">${H(t.n)}</span><span class="tag">${t.mod}</span>${irrHigh?'<span class="tag warn">⚠ 易刺激性高</span>':""}<span class="t-time num">${t.t}秒</span></div>
+    ${ctrl}${tools}</div>`;
+}
+function lvSection(lv, list){
+  const ts = list.filter(t=>t.lv===lv);
+  if (!ts.length) return "";
+  const done = ts.filter(t=>S.res[t.id]!=null).length;
+  return `<section class="card">
+    <div class="lv-head"><span class="lv">P${lv}</span><b>${["","必須","推奨","時間があれば"][lv]}</b><span class="cnt num">${done}/${ts.length}</span></div>
+    ${ts.map(testRow).join("")}</section>`;
+}
+function gate(nextLv, list){
+  const rest = list.filter(t=>t.lv>=nextLv).length;
+  if (!rest) return "";
+  return `<div class="card"><div class="row">
+    <button type="button" class="btn primary" data-act="level" data-n="${nextLv}">P${nextLv}に進む</button>
+    <button type="button" class="btn" data-act="endhere">ここで終える（残り${rest}件は次回へ）</button></div></div>`;
+}
+function rTests(){
+  const list = testList();
+  if (!list.length) return `<h1>モジュール別の検査</h1><div class="note warn">評価モジュールが選ばれていません。<button type="button" class="btn small" data-act="goto" data-i="3">モジュールを選ぶ</button></div>`;
+  const el = S.startedAt ? (Date.now()-S.startedAt)/1000 : 0;
+  const pending2 = list.filter(t=>t.lv>=2 && S.res[t.id]==null).length;
+  const cls = CLUSTERS.filter(c=>S.mods[c.mod] && S.mods[c.mod].on);
+  let html = `<h1>モジュール別の検査</h1>
+  <p class="lead">P1から順に入力します。もう一度同じボタンを押すと取り消せます。</p>`;
+  if (S.hx.irr==="高") html += `<div class="note warn"><b>易刺激性：高</b><div>症状を誘発しやすい検査は、最初からスキップにしてあります。実施する場合は「取り消す」を押してください。</div></div>`;
+  if (el>=600 && pending2) html += `<div class="note warn"><b>10分を過ぎました</b><div>P2以降の未入力${pending2}件を次回の評価に回しますか？</div><div><button type="button" class="btn small" data-act="defer">次回に回す</button></div></div>`;
+  if (cls.length) html += `<div class="card">${cls.map(c=>{
+    const s = clusterStat(c);
+    return `<div class="cl"><div class="cl-row"><b>${c.name}</b><span class="num">陽性 ${s.pos}/${s.total}${s.und?`　未実施 ${s.und}`:""}</span></div>
+      <div class="cl-items">${s.vals.map(([n,v])=>`<span class="${v===true?"p":v===false?"n":"u"}">${H(n)}</span>`).join("")}</div></div>`;
+  }).join("")}<p class="sub">該当した件数のみを記録します。解釈は記録のA欄に記入してください。</p></div>`;
+  html += lvSection(1, list);
+  if (S.level<2) html += gate(2, list);
+  if (S.level>=2){ html += lvSection(2, list); if (S.level<3) html += gate(3, list); }
+  if (S.level>=3) html += lvSection(3, list);
+  return html;
+}
+function rSmod(){
+  const s = S.smod;
+  return `<h1>症状修正・機能評価</h1>
+  <p class="lead">徒手的な誘導で症状が変わるかを確認します。治療方針を決める手がかりになります。</p>
+  <div class="card">${field("このステップ", seg("smod.mode",["実施する","スキップ"]), !s.mode)}
+    ${s.mode==="スキップ" ? field("スキップの理由", seg("smod.skip",["時間","易刺激性高","対象動作なし","次回実施"]), !s.skip) : ""}
+  </div>
+  ${s.mode==="実施する" ? `
+  <div class="card">
+    ${field("対象動作", seg("smod.motion",["前屈","後屈","立ち上がり","歩行","寝返り"]), !s.motion)}
+    ${slider("smod.pre","誘導なしのNRS",0,10,1,"",S.hx.nrsBack==null?5:S.hx.nrsBack)}
+  </div>
+  <div class="card">
+    ${TECH.map(t=>field(t.n, seg(`smod.items.${t.id}`,["改善","不変","増悪"], v=>v==="改善"?"neg":v==="増悪"?"pos":""))).join("")}
+  </div>
+  <div class="card">${slider("smod.post","最も効果のあった誘導でのNRS",0,10,1,"",3)}</div>` : ""}`;
+}
+function untested(){
+  const out = testList().filter(t=>S.res[t.id]==null || S.res[t.id]==="next").map(t=>t.n);
+  return missing("core").concat(out);
+}
+function skippedList(){
+  const out = [];
+  const sg = suggest(S);
+  MOD_KEYS.forEach(k=>{ if (sg[k] && !(S.mods[k] && S.mods[k].on)) out.push(`${k} ${MODS[k].name}モジュール（${S.modSkip[k]||"理由未選択"}）`); });
+  testList().forEach(t=>{ const v=S.res[t.id]; if (isSkip(v)) out.push(`${t.n}（${v.slice(5)}）`); });
+  if (S.smod.mode==="スキップ") out.push(`症状修正（${S.smod.skip||"理由未選択"}）`);
+  return out;
+}
+function soapText(){
+  const i=S.info, h=S.hx, c=S.core;
+  const f = v => v==null || v==="" ? "—" : v;
+  const d = new Date();
+  const ds = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;
+  const L = [];
+  L.push(`【腰部 初回評価】${ds}　ID:${f(i.pid)}　症状側：${f(i.side)}`);
+  if (S.startedAt) L.push(`評価時間：${fmtT()}`);
+  if (i.postop) L.push(`術後：${f(i.op)}　術後${f(i.opWeeks)}週　禁忌・制限：${i.contra.join("・")||"なし"}`);
+  L.push(`S: 年齢帯 ${f(h.age)}、${f(h.onset)}、経過${f(h.dur)}。症状部位：${h.loc.join("・")||"—"}。主訴：${h.chief.join("・")||"—"}。`);
+  L.push(`   増悪・軽減：${h.aggr.join("・")||"—"}。背景：${h.bg.join("・")||"特記なし"}。`);
+  L.push(`   NRS 腰痛${f(h.nrsBack)}/10・下肢痛${f(h.nrsLeg)}/10。易刺激性：${f(h.irr)}${h.sbt!=null?`。STarT Back ${h.sbt}/9（心理${f(h.sbtPsy)}/5、${sbtRisk()}）`:""}`);
+  if (S.rf.items.length) L.push(`   レッドフラグ：医師へ確認（${S.rf.items.join("・")}）`);
+  else L.push(`   レッドフラグ：${S.rf.cleared?"医師の診察済み・該当なし":"未確認"}`);
+  L.push(`O: 視診・姿勢：${c.insp.join("・")||"—"}。動作観察：${c.move.join("・")||"—"}`);
+  L.push(`   腰椎AROM：FFD ${f(c.ffd)}cm。` + MOVES.map(mv=>`${mv.n} ${f(c.mv[mv.id].pain)}・${f(c.mv[mv.id].lim)}`).join("、"));
+  L.push(`   SLR：症状側 ${f(c.slr)}°（${f(c.slrResp)}）${c.slrN!=null?`、反対側 ${c.slrN}°`:""}。股関節スクリーン：${f(c.hip)}`);
+  L.push(`   圧痛：${c.tender.join("・")||"—"}`);
+  if (h.chief.includes("重苦感")) L.push(`   重苦感の再現：${f(c.heavy)}${c.heavyMs.length?`（${c.heavyMs.join("・")}）`:""}`);
+  const list = testList();
+  MOD_KEYS.forEach(k=>{
+    const done = list.filter(t=>t.mod===k && isResult(S.res[t.id]));
+    if (done.length) L.push(`   [${k} ${MODS[k].name}] ` + done.map(t=>`${t.n} ${S.res[t.id]}${t.num?(t.unit||""):""}`).join("、"));
+  });
+  CLUSTERS.filter(cl=>S.mods[cl.mod] && S.mods[cl.mod].on).forEach(cl=>{
+    const s = clusterStat(cl);
+    L.push(`   ${cl.name}：${s.total}項目中 該当${s.pos}${s.und?`（未確認${s.und}）`:""}`);
+  });
+  if (S.smod.mode==="実施する"){
+    const items = TECH.filter(t=>S.smod.items[t.id]).map(t=>`${t.n} ${S.smod.items[t.id]}`);
+    L.push(`   症状修正（対象動作：${f(S.smod.motion)}）：${items.join("、")||"—"}　NRS ${f(S.smod.pre)}→${f(S.smod.post)}`);
+  }
+  L.push(`A: ${S.ap.a}`);
+  L.push(`P: ${S.ap.p}`);
+  const un = untested(); if (un.length) L.push(`【未実施（次回の評価へ）】${un.join("、")}`);
+  const sk = skippedList(); if (sk.length) L.push(`【スキップ】${sk.join("、")}`);
+  return L.join("\n");
+}
+function clearConfirm(){
+  return `<div class="note warn"><b>入力中の記録を消去します。</b><div>記録をコピーしていない場合は、先にコピーしてください。</div>
+    <div class="row"><button type="button" class="btn danger" data-act="clear">消去する</button><button type="button" class="btn" data-act="cancelclear">やめる</button></div></div>`;
+}
+function rSum(){
+  const rows = STEPS.slice(0,7).map((st,i)=>({st,i,m:missing(st.id)})).filter(x=>x.m.length);
+  const txt = soapText();
+  return `<h1>記録のまとめ</h1>
+  <p class="lead">A（アセスメント）とP（計画）を記入し、記録をコピーして電子カルテに貼り付けてください。</p>
+  <div class="card">
+    <div class="f-label">記録前のチェック</div>
+    ${rows.length ? rows.map(x=>`<div class="check-row"><div><b>${x.st.title}</b><span class="sub">${H(x.m.join("、"))}</span></div><button type="button" class="btn small" data-act="goto" data-i="${x.i}">移動</button></div>`).join("")
+      : `<div class="sub">未入力の項目はありません。</div>`}
+  </div>
+  <div class="card">
+    ${field("A：アセスメント", `<textarea id="ap-a" data-text="ap.a" placeholder="病態の解釈、問題点など">${H(S.ap.a)}</textarea>`)}
+    ${field("P：計画", `<textarea id="ap-p" data-text="ap.p" placeholder="治療方針、次回の再評価項目など">${H(S.ap.p)}</textarea>`)}
+  </div>
+  <div class="card">
+    <div class="f-label">記録（SOAP）</div>
+    <textarea id="soapText" class="soap" readonly rows="${txt.split("\n").length+2}">${H(txt)}</textarea>
+    ${UI.flash ? `<div class="flash" role="status">${H(UI.flash)}</div>` : ""}
+    <div class="row"><button type="button" class="btn primary" data-act="copy">記録をコピー</button></div>
+  </div>
+  <div class="card">${UI.confirmClear ? clearConfirm() : `<button type="button" class="btn" data-act="newpt">この症例を終えて消去する</button>`}</div>`;
+}
+
+/* ---------- frame ---------- */
+function fmtT(){
+  if (!S.startedAt) return "--:--";
+  const s = Math.max(0, Math.floor((Date.now()-S.startedAt)/1000));
+  return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+}
+function timerCls(){ if (!S.startedAt) return ""; const s=(Date.now()-S.startedAt)/1000; return s>=900?"t15":s>=600?"t10":""; }
+function renderTop(){
+  const p1 = testList().filter(t=>t.lv===1);
+  const left = p1.filter(t=>S.res[t.id]==null).length;
+  document.getElementById("top").innerHTML = `
+    <div class="top-row">
+      <div class="app">腰部 初回評価${S.info.side?`<small>症状側：${S.info.side}</small>`:""}</div>
+      ${p1.length ? `<div class="p1left">P1 残り<br><b>${left}</b></div>` : ""}
+      <div id="timer" class="timer ${timerCls()}" aria-label="経過時間">${fmtT()}</div>
+    </div>
+    <div class="steps">${STEPS.map((st,i)=>{
+      const c = i===S.step ? "cur" : i<S.step ? "done" : "";
+      const m = i<S.step && i<7 && missing(st.id).length ? " miss" : "";
+      return `<button type="button" class="${c}${m}" data-act="goto" data-i="${i}" aria-current="${i===S.step?"step":"false"}">${st.label}</button>`;
+    }).join("")}</div>`;
+}
+function renderBottom(){
+  const i = S.step, miss = i<7 ? missing(STEPS[i].id).length : 0;
+  document.getElementById("bottom").innerHTML = `
+    <button type="button" class="btn" data-act="prev" ${i===0?"disabled":""}>戻る</button>
+    <div class="nav-mid"><span class="num">${i+1}/${STEPS.length}</span>${miss?`<br><span class="w">未入力 ${miss}</span>`:""}</div>
+    ${i<STEPS.length-1
+      ? `<button type="button" class="btn primary" data-act="next">次へ：${STEPS[i+1].title}</button>`
+      : `<button type="button" class="btn primary" data-act="copy">記録をコピー</button>`}`;
+}
+function render(){
+  const fn = {info:rInfo, rf:rRf, hx:rHx, mods:rMods, core:rCore, tests:rTests, smod:rSmod, sum:rSum}[STEPS[S.step].id];
+  const banner = S.sample ? `<div class="note info"><b>サンプル症例を表示しています</b><div>入力の流れを確認するための架空の症例です。</div><div><button type="button" class="btn small primary" data-act="newpt">新しい患者で始める</button></div></div>` : "";
+  document.getElementById("main").innerHTML = banner + fn();
+  renderTop(); renderBottom();
+}
+function onEnter(id){
+  if (id==="mods" && !S.modsInit) applySuggest(S);
+  if (id==="tests" && S.hx.irr==="高") testList().forEach(t=>{ if (t.irr && S.res[t.id]==null) S.res[t.id] = "skip:易刺激性高"; });
+}
+function goStep(i){
+  i = Math.max(0, Math.min(STEPS.length-1, i));
+  if (!S.startedAt && i>0) S.startedAt = Date.now();
+  S.step = i; UI.openSkip = null; UI.confirmClear = false; UI.flash = "";
+  onEnter(STEPS[i].id);
+  save(); render(); window.scrollTo(0,0);
+}
+function refreshSoap(){ const ta = document.getElementById("soapText"); if (ta) ta.value = soapText(); }
+function doCopy(){
+  const txt = soapText();
+  const done = msg => { UI.flash = msg; if (STEPS[S.step].id!=="sum") goStep(7); else render(); setTimeout(()=>{ UI.flash=""; if (STEPS[S.step].id==="sum") render(); }, 5000); };
+  const fail = () => { done("自動でコピーできませんでした。記録欄を長押しして全選択し、コピーしてください。"); const ta=document.getElementById("soapText"); if (ta){ ta.focus(); ta.select(); } };
+  try { navigator.clipboard.writeText(txt).then(()=>done("コピーしました。電子カルテに貼り付けてください。"), fail); } catch(e){ fail(); }
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const a = b.dataset.act, p = b.dataset.path;
+  switch (a){
+    case "next": return goStep(S.step+1);
+    case "prev": return goStep(S.step-1);
+    case "goto": return goStep(Number(b.dataset.i));
+    case "copy": return doCopy();
+    case "set": {
+      const v = b.dataset.type==="n" ? Number(b.dataset.val) : b.dataset.val;
+      sp(p, (gp(p)===v && !b.dataset.keep) ? null : v);
+      if (p==="hx.onset") S.info.postop = gp(p)==="術後";
+      break;
+    }
+    case "tog": {
+      const v = b.dataset.val, ex = b.dataset.excl;
+      let arr = (gp(p)||[]).slice();
+      if (arr.includes(v)) arr = arr.filter(x=>x!==v);
+      else if (ex && v===ex) arr = [v];
+      else { arr = arr.filter(x=>x!==ex); arr.push(v); }
+      sp(p, arr); break;
+    }
+    case "bool": {
+      sp(p, !gp(p));
+      if (p==="info.postop"){ if (S.info.postop) S.hx.onset = "術後"; else if (S.hx.onset==="術後") S.hx.onset = null; }
+      break;
+    }
+    case "inc": {
+      const min=Number(b.dataset.min), max=Number(b.dataset.max), d=Number(b.dataset.d);
+      const cur = gp(p);
+      sp(p, Math.max(min, Math.min(max, cur==null ? Number(b.dataset.def) : cur+d)));
+      break;
+    }
+    case "mod": {
+      const k = b.dataset.k, m = S.mods[k] || {on:false, role:"副"};
+      m.on = !m.on; S.mods[k] = m; break;
+    }
+    case "addmod": S.mods[b.dataset.k] = {on:true, role:"副"}; break;
+    case "reapply": applySuggest(S); break;
+    case "skipopen": UI.openSkip = UI.openSkip===b.dataset.id ? null : b.dataset.id; break;
+    case "skipset": S.res[b.dataset.id] = "skip:"+b.dataset.val; UI.openSkip = null; break;
+    case "clearres": delete S.res[b.dataset.id]; break;
+    case "level": S.level = Number(b.dataset.n); break;
+    case "endhere": testList().forEach(t=>{ if (t.lv>S.level && S.res[t.id]==null) S.res[t.id]="next"; }); return goStep(S.step+1);
+    case "defer": testList().forEach(t=>{ if (t.lv>=2 && S.res[t.id]==null) S.res[t.id]="next"; }); break;
+    case "sample": S = sample(); return goStep(S.step);
+    case "newpt": if (S.sample){ S = blank(); return goStep(0); } UI.confirmClear = true; break;
+    case "cancelclear": UI.confirmClear = false; break;
+    case "clear": S = blank(); UI.confirmClear = false; return goStep(0);
+  }
+  save(); render();
+});
+document.addEventListener("input", e=>{
+  const t = e.target;
+  if (t.dataset.range){
+    const v = Number(t.value);
+    sp(t.dataset.range, v); t.classList.remove("unset");
+    const o = document.querySelector(`[data-out="${t.dataset.range}"]`);
+    if (o) o.textContent = v + (t.dataset.unit||"");
+    save();
+  } else if (t.dataset.text){
+    sp(t.dataset.text, t.value); save(); refreshSoap();
+  }
+});
+document.addEventListener("change", e=>{ if (e.target.dataset.range) render(); });
+document.addEventListener("toggle", e=>{
+  const d = e.target; if (!d.dataset || !d.dataset.hint) return;
+  if (d.open) UI.hints.add(d.dataset.hint); else UI.hints.delete(d.dataset.hint);
+}, true);
+setInterval(()=>{ const el = document.getElementById("timer"); if (el){ el.textContent = fmtT(); el.className = "timer " + timerCls(); } }, 1000);
+
+onEnter(STEPS[S.step].id);
+render();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+</body>
+</html>

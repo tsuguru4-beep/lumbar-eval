@@ -1,0 +1,13 @@
+{
+  "name": "腰部 初回評価ナビ",
+  "short_name": "腰評価",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEF0F4",
+  "theme_color": "#3A4C9A",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
