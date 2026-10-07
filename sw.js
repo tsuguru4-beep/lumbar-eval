@@ -1,6 +1,6 @@
 // オフライン用。アプリ本体は端末にキャッシュし、2回目以降は電波がなくても起動する。
-// 20261008000049 はビルド時に置き換わる。更新を配るときはビルドし直すだけでよい。
-const CACHE = "lumbar-eval-20261008000049";
+// 20261008003620 はビルド時に置き換わる。更新を配るときはビルドし直すだけでよい。
+const CACHE = "lumbar-eval-20261008003620";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", e => {

@@ -337,7 +337,7 @@ function merge(base, src){
 function load(){ try{ const t = localStorage.getItem(KEY); return t ? merge(blank(), JSON.parse(t)) : null; }catch(e){ return null; } }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
-let S = load() || sample();
+let S;  // 初期化は末尾で行う（sample() が下で定義する年齢区分などの定数を使うため）
 const UI = {openSkip:null, confirmClear:false, flash:"", hints:new Set()};
 
 function gp(p){ return p.split(".").reduce((o,k)=> o==null ? undefined : o[k], S); }
@@ -899,6 +899,7 @@ document.addEventListener("toggle", e=>{
 }, true);
 setInterval(()=>{ const el = document.getElementById("timer"); if (el){ el.textContent = fmtT(); el.className = "timer " + timerCls(); } }, 1000);
 
+S = load() || sample();
 onEnter(STEPS[S.step].id);
 render();
 </script>
