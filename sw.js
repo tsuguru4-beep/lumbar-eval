@@ -1,10 +1,11 @@
 // オフライン用。アプリ本体は端末にキャッシュし、2回目以降は電波がなくても起動する。
-// 20261008003620 はビルド時に置き換わる。更新を配るときはビルドし直すだけでよい。
-const CACHE = "lumbar-eval-20261008003620";
+// 20261008005612 はビルド時に置き換わる。更新を配るときはビルドし直すだけでよい。
+const CACHE = "lumbar-eval-20261008005612";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // cache:"reload" でブラウザの一時保存を飛ばし、必ずサーバーから最新を取る（古い版を新しい版として保存しないため）
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, {cache: "reload"})))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", e => {
